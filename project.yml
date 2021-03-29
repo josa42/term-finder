@@ -1,0 +1,8 @@
+files:
+  src:
+    path: "{**}.go"
+    exclude: "{**}_test.go"
+    related: 'test'
+  test:
+    path: "{**}_test.go"
+    related: 'src'
