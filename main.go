@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/ioutil"
+	"log"
 	"os"
 
 	"github.com/gdamore/tcell/v2"
@@ -17,10 +18,20 @@ func get(node *tview.TreeNode) *tree.FSNode {
 	return ref.(*tree.FSNode)
 }
 
+func setupLogging() func() error {
+	f, _ := os.OpenFile("/tmp/term-finder.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+
+	log.SetOutput(f)
+
+	return f.Close
+}
+
 // Show a navigable tree view of the current directory.
 func main() {
+	defer setupLogging()()
 
 	pwd, _ := os.Getwd()
+	log.Printf("open: %s", pwd)
 
 	root := tree.NewNode(pwd, ".", true)
 	root.Expand()
@@ -74,6 +85,7 @@ func main() {
 		node := treeView.GetCurrentNode()
 		if fsnode := get(node); fsnode != nil {
 
+			log.Printf("changed: %s", fsnode.Path)
 			if !fsnode.IsDir {
 				// contentView.SetText(fsnode.Path)
 				// contentView.SetTitle(fsnode.Path)
