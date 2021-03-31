@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/josa42/term-finder/tree"
 	"github.com/rivo/tview"
 )
@@ -33,6 +32,18 @@ func main() {
 	pwd, _ := os.Getwd()
 	log.Printf("open: %s", pwd)
 
+	theme := tree.GetTheme()
+
+	app := tview.NewApplication()
+
+	grid := tview.NewGrid().
+		SetBordersColor(theme.Border).
+		SetBorders(theme.Border != 0).
+		SetRows(0).
+		SetColumns(50, 0)
+
+	app.SetRoot(grid, true)
+
 	root := tree.NewNode(pwd, ".", true)
 	root.Expand()
 	get(root).ReadChildren()
@@ -42,20 +53,21 @@ func main() {
 		SetCurrentNode(root).
 		SetTopLevel(1)
 
-	// treeView.SetBorder(true)
-	treeView.SetBorderPadding(0, 0, 1, 1)
-	treeView.SetGraphicsColor(tcell.NewHexColor(0x5c6370))
-	treeView.SetBackgroundColor(tcell.NewHexColor(0x2c323c))
-	// treeView.SetBorder(true)
-	// treeView.SetBorderColor(tcell.NewHexColor(0x5c6370))
+	treeView.SetBorderPadding(0, 0, 2, 2)
+	treeView.SetGraphicsColor(theme.SidebarLines)
+	treeView.SetBackgroundColor(theme.SidebarBackground)
 
 	contentView := tview.NewTextView()
-	contentView.SetBorderPadding(0, 0, 1, 1)
-	contentView.SetBackgroundColor(tcell.NewHexColor(0x282c34))
-	// contentView.SetBorder(true)
-	// contentView.SetBorderColor(tcell.NewHexColor(0x5c6370))
+	contentView.SetBorderPadding(0, 0, 2, 2)
+	contentView.SetBackgroundColor(theme.ContentBackground)
 
-	// If a directory was selected, open it.
+	grid.
+		AddItem(treeView, 0, 0, 1, 1, 0, 0, true)
+
+	grid.
+		AddItem(treeView, 0, 0, 1, 1, 0, 50, true).
+		AddItem(contentView, 0, 1, 1, 1, 0, 50, false)
+
 	treeView.SetSelectedFunc(func(node *tview.TreeNode) {
 		if fsnode := get(node); fsnode != nil {
 
@@ -96,20 +108,9 @@ func main() {
 		}
 	})
 
-	grid := tview.NewGrid().
-		SetBordersColor(tcell.NewHexColor(0x5c6370)).
-		SetBorders(true).
-		SetRows(0).
-		SetColumns(50, 0)
+	app.SetFocus(treeView)
 
-	grid.
-		AddItem(treeView, 0, 0, 1, 1, 0, 0, true)
-
-	grid.
-		AddItem(treeView, 0, 0, 1, 1, 0, 50, true).
-		AddItem(contentView, 0, 1, 1, 1, 0, 50, false)
-
-	if err := tview.NewApplication().SetRoot(grid, true).Run(); err != nil {
+	if err := app.Run(); err != nil {
 		panic(err)
 	}
 }
