@@ -99,11 +99,13 @@ func main() {
 
 			log.Printf("changed: %s", fsnode.Path)
 			if !fsnode.IsDir {
-				// contentView.SetText(fsnode.Path)
-				// contentView.SetTitle(fsnode.Path)
-				// content, _ := ioutil.ReadFile(fsnode.Path)
-				// contentView.SetText(string(content))
-				// contentView.ScrollTo(0, 0)
+				contentView.SetText(fsnode.Path)
+				contentView.SetTitle(fsnode.Path)
+				content, _ := ioutil.ReadFile(fsnode.Path)
+				contentView.SetText(string(content))
+				contentView.ScrollTo(0, 0)
+
+				go app.Draw()
 			}
 		}
 	})
