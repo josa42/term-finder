@@ -2,6 +2,7 @@ package tree
 
 import (
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"path/filepath"
 	"sort"
@@ -15,21 +16,42 @@ type FSNode struct {
 	Name  string
 	Path  string
 	IsDir bool
+	Size  int64
 	node  *tview.TreeNode
 }
 
-func NewNode(parentPath string, name string, isDir bool) *tview.TreeNode {
-	fpath := filepath.Join(parentPath, name)
-
+func NewRootNode(path string) *tview.TreeNode {
 	fsnode := &FSNode{
-		Name:  name,
-		Path:  fpath,
-		IsDir: isDir,
+		Name:  ".",
+		Path:  path,
+		IsDir: true,
 	}
 
 	fsnode.node = createNode(fsnode)
 
 	return fsnode.node
+}
+
+func NewNode(parentPath string, file fs.FileInfo) *tview.TreeNode {
+
+	name := file.Name()
+	fpath := filepath.Join(parentPath, name)
+
+	fsnode := &FSNode{
+		Name:  name,
+		Path:  fpath,
+		IsDir: file.IsDir(),
+		Size:  file.Size(),
+	}
+
+	fsnode.node = createNode(fsnode)
+
+	return fsnode.node
+}
+
+func (n *FSNode) Expand() {
+	n.ReadChildren()
+	n.node.Expand()
 }
 
 func (n *FSNode) ReadChildren() {
@@ -44,7 +66,7 @@ func (n *FSNode) ReadChildren() {
 		nodes := []*tview.TreeNode{}
 
 		for _, file := range files {
-			nodes = append(nodes, NewNode(n.Path, file.Name(), file.IsDir()))
+			nodes = append(nodes, NewNode(n.Path, file))
 		}
 
 		sort.Slice(nodes, func(i, j int) bool {

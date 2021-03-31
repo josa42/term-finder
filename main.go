@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/josa42/term-finder/tree"
 	"github.com/rivo/tview"
 )
@@ -35,6 +37,7 @@ func main() {
 	theme := tree.GetTheme()
 
 	app := tview.NewApplication()
+	app.EnableMouse(true)
 
 	grid := tview.NewGrid().
 		SetBordersColor(theme.Border).
@@ -44,7 +47,7 @@ func main() {
 
 	app.SetRoot(grid, true)
 
-	root := tree.NewNode(pwd, ".", true)
+	root := tree.NewRootNode(pwd)
 	root.Expand()
 	get(root).ReadChildren()
 
@@ -77,8 +80,7 @@ func main() {
 				node.Collapse()
 
 			} else if fsnode.IsDir {
-				node.Expand()
-				fsnode.ReadChildren()
+				fsnode.Expand()
 
 			} else {
 				contentView.SetTitle(fsnode.Path)
@@ -97,22 +99,81 @@ func main() {
 		node := treeView.GetCurrentNode()
 		if fsnode := get(node); fsnode != nil {
 
-			log.Printf("changed: %s", fsnode.Path)
-			if !fsnode.IsDir {
+			if !fsnode.IsDir && fsnode.Size < 400_000 {
 				contentView.SetText(fsnode.Path)
 				contentView.SetTitle(fsnode.Path)
 				content, _ := ioutil.ReadFile(fsnode.Path)
-				contentView.SetText(string(content))
-				contentView.ScrollTo(0, 0)
+				contentView.SetText(fmt.Sprintf("%s\n%d\n---\n%s", fsnode.Path, fsnode.Size, string(content)))
 
-				go app.Draw()
+			} else {
+				contentView.SetText(fmt.Sprintf("%s\n%d", fsnode.Path, fsnode.Size))
 			}
+
+			contentView.ScrollTo(0, 0)
+			go app.Draw()
+
 		}
 	})
 
-	app.SetFocus(treeView)
+	selectParent := func(curr *tview.TreeNode) {
+		root.Walk(func(node, parent *tview.TreeNode) bool {
+			if node == curr {
+				if parent != nil && parent != root {
+					treeView.SetCurrentNode(parent)
+				}
+				return false
+			}
+			return true
+		})
 
-	if err := app.Run(); err != nil {
+	}
+
+	treeView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyLeft:
+			curr := treeView.GetCurrentNode()
+			if fsnode := get(curr); fsnode != nil {
+				if fsnode.IsDir && curr.IsExpanded() {
+					curr.Collapse()
+
+				} else {
+					selectParent(curr)
+				}
+			}
+			return nil
+		case tcell.KeyRight:
+			curr := treeView.GetCurrentNode()
+			if fsnode := get(curr); fsnode != nil {
+				if fsnode.IsDir {
+					fsnode.Expand()
+				}
+			}
+			return nil
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case 'K':
+				return nil // noop
+			default:
+				return event
+			}
+		default:
+			return event
+		}
+	})
+
+	treeView.SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
+		switch action {
+		case tview.MouseScrollUp:
+			return action, nil
+		case tview.MouseScrollDown:
+			return action, nil
+		default:
+			return action, event
+		}
+
+	})
+
+	if err := app.SetRoot(grid, true).Run(); err != nil {
 		panic(err)
 	}
 }
