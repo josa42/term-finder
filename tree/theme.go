@@ -7,6 +7,7 @@ type Theme struct {
 	SidebarLines      tcell.Color
 	ContentBackground tcell.Color
 	Border            tcell.Color
+	TopbarBorder      tcell.Color
 }
 
 var theme *Theme
@@ -18,6 +19,7 @@ func GetTheme() *Theme {
 			SidebarBackground: tcell.NewHexColor(0x21252B),
 			ContentBackground: tcell.NewHexColor(0x282c34),
 			// Border:            tcell.NewHexColor(0x5c6370),
+			TopbarBorder: tcell.NewHexColor(0x5c6370),
 		}
 	}
 	return theme
