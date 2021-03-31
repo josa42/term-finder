@@ -167,7 +167,13 @@ func main() {
 
 		case tcell.KeyRight:
 			if fsnode.IsDir {
-				fsnode.Expand()
+				if node.IsExpanded() {
+					root = node
+					treeView.SetRoot(node)
+
+				} else {
+					fsnode.Expand()
+				}
 			}
 			return nil
 
@@ -180,7 +186,9 @@ func main() {
 				if fsnode.IsDir {
 					root = node
 					treeView.SetRoot(node)
-					fsnode.Expand()
+					if !node.IsExpanded() {
+						fsnode.Expand()
+					}
 				}
 				return nil
 			case 'C':
