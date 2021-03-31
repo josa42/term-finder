@@ -35,6 +35,12 @@ func newRootFsnode(path string) *FSNode {
 
 func NewRootNode(path string) *tview.TreeNode {
 	fsnode := newRootFsnode(path)
+
+	if !fsnode.Node.IsExpanded() {
+		fsnode.Node.Expand()
+		fsnode.ReadChildren()
+	}
+
 	return fsnode.Node
 }
 
@@ -63,6 +69,15 @@ func NewNode(parentPath string, file fs.FileInfo) *tview.TreeNode {
 func (n *FSNode) Expand() {
 	n.ReadChildren()
 	n.Node.Expand()
+}
+
+func (n *FSNode) Collapse() {
+	n.Node.ClearChildren()
+	n.Node.Collapse()
+}
+
+func (n *FSNode) IsExpanded() bool {
+	return n.Node.IsExpanded()
 }
 
 func (n *FSNode) readChildren(node *FSNode) {
