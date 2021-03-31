@@ -6,5 +6,3 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule: { interval: "daily" }
-
-      - run: go test ./... -v
