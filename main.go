@@ -27,6 +27,19 @@ func setupLogging() func() error {
 	return f.Close
 }
 
+func findParent(root, curr *tview.TreeNode) *tview.TreeNode {
+	var currParent *tview.TreeNode
+	root.Walk(func(node, parent *tview.TreeNode) bool {
+		if node == curr {
+			currParent = parent
+			return false
+		}
+		return true
+	})
+
+	return currParent
+}
+
 // Show a navigable tree view of the current directory.
 func main() {
 	defer setupLogging()()
@@ -116,6 +129,10 @@ func main() {
 	})
 
 	selectParent := func(curr *tview.TreeNode) {
+
+		// if parent := findParent(root, curr); parent != nil {
+		//   					treeView.SetCurrentNode(parent)
+		// }
 		root.Walk(func(node, parent *tview.TreeNode) bool {
 			if node == curr {
 				if parent != nil && parent != root {
@@ -125,37 +142,59 @@ func main() {
 			}
 			return true
 		})
-
 	}
 
 	treeView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		node := treeView.GetCurrentNode()
+		fsnode := get(node)
+
 		switch event.Key() {
 		case tcell.KeyLeft:
-			curr := treeView.GetCurrentNode()
-			if fsnode := get(curr); fsnode != nil {
-				if fsnode.IsDir && curr.IsExpanded() {
-					curr.Collapse()
+			if fsnode.IsDir && node.IsExpanded() {
+				node.Collapse()
 
-				} else {
-					selectParent(curr)
+			} else if parent := findParent(root, node); parent == root {
+				if parentFsnode := get(parent); parentFsnode != nil {
+					n := parentFsnode.CreateParent()
+					root = n.Node
+					treeView.SetRoot(n.Node)
 				}
+
+			} else {
+				selectParent(node)
 			}
 			return nil
+
 		case tcell.KeyRight:
-			curr := treeView.GetCurrentNode()
-			if fsnode := get(curr); fsnode != nil {
-				if fsnode.IsDir {
-					fsnode.Expand()
-				}
+			if fsnode.IsDir {
+				fsnode.Expand()
 			}
 			return nil
+
 		case tcell.KeyRune:
 			switch event.Rune() {
 			case 'K':
 				return nil // noop
+
+			case 'c':
+				if fsnode.IsDir {
+					root = node
+					treeView.SetRoot(node)
+					fsnode.Expand()
+				}
+				return nil
+			case 'C':
+				if parentFsnode := get(root); parentFsnode != nil {
+					n := parentFsnode.CreateParent()
+					root = n.Node
+					treeView.SetRoot(n.Node)
+				}
+				return nil
+
 			default:
 				return event
 			}
+
 		default:
 			return event
 		}

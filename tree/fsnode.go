@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"io/ioutil"
+	"log"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -17,22 +18,27 @@ type FSNode struct {
 	Path  string
 	IsDir bool
 	Size  int64
-	node  *tview.TreeNode
+	Node  *tview.TreeNode
 }
 
-func NewRootNode(path string) *tview.TreeNode {
+func newRootFsnode(path string) *FSNode {
 	fsnode := &FSNode{
-		Name:  ".",
+		Name:  filepath.Base(path),
 		Path:  path,
 		IsDir: true,
 	}
 
-	fsnode.node = createNode(fsnode)
+	fsnode.Node = createNode(fsnode)
 
-	return fsnode.node
+	return fsnode
 }
 
-func NewNode(parentPath string, file fs.FileInfo) *tview.TreeNode {
+func NewRootNode(path string) *tview.TreeNode {
+	fsnode := newRootFsnode(path)
+	return fsnode.Node
+}
+
+func newFsnode(parentPath string, file fs.FileInfo) *FSNode {
 
 	name := file.Name()
 	fpath := filepath.Join(parentPath, name)
@@ -44,19 +50,24 @@ func NewNode(parentPath string, file fs.FileInfo) *tview.TreeNode {
 		Size:  file.Size(),
 	}
 
-	fsnode.node = createNode(fsnode)
+	fsnode.Node = createNode(fsnode)
 
-	return fsnode.node
+	return fsnode
+}
+
+func NewNode(parentPath string, file fs.FileInfo) *tview.TreeNode {
+	fsnode := newFsnode(parentPath, file)
+	return fsnode.Node
 }
 
 func (n *FSNode) Expand() {
 	n.ReadChildren()
-	n.node.Expand()
+	n.Node.Expand()
 }
 
-func (n *FSNode) ReadChildren() {
+func (n *FSNode) readChildren(node *FSNode) {
 	if n.IsDir {
-		n.node.ClearChildren()
+		n.Node.ClearChildren()
 
 		files, err := ioutil.ReadDir(n.Path)
 		if err != nil {
@@ -65,8 +76,22 @@ func (n *FSNode) ReadChildren() {
 
 		nodes := []*tview.TreeNode{}
 
+		if node != nil {
+			log.Printf("looking for node %s", node.Path)
+		}
+
 		for _, file := range files {
-			nodes = append(nodes, NewNode(n.Path, file))
+			fpath := filepath.Join(n.Path, file.Name())
+
+			if node != nil && node.Path == fpath {
+				log.Printf("reuse node %s", node.Path)
+				nodes = append(nodes, node.Node)
+			} else {
+				if node != nil {
+					log.Printf("new node %s", fpath)
+				}
+				nodes = append(nodes, NewNode(n.Path, file))
+			}
 		}
 
 		sort.Slice(nodes, func(i, j int) bool {
@@ -81,16 +106,32 @@ func (n *FSNode) ReadChildren() {
 		})
 
 		for _, node := range nodes {
-			n.node.AddChild(node)
+			n.Node.AddChild(node)
 		}
 	}
 }
 
-func (n *FSNode) Title() string {
-	if n.Name == "." {
-		return ".."
+func (n *FSNode) ReadChildren() {
+	n.readChildren(nil)
+}
+
+func (n *FSNode) CreateParent() *FSNode {
+	dir := filepath.Dir(n.Path)
+	log.Printf("Create parent for: %s => %s", n.Path, dir)
+
+	if n.Path == dir {
+		return n
 	}
 
+	rnode := newRootFsnode(dir)
+
+	rnode.readChildren(n)
+	rnode.Node.SetExpanded(true)
+
+	return rnode
+}
+
+func (n *FSNode) Title() string {
 	icon := ""
 	if n.IsDir {
 		icon = ""
