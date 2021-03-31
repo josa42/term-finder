@@ -11,6 +11,7 @@ type FileTree struct {
 	root      *tview.TreeNode
 	onSelect  func(node *FSNode)
 	onChanged func(node *FSNode)
+	AfterDraw []func()
 }
 
 func get(node *tview.TreeNode) *FSNode {
@@ -157,6 +158,19 @@ func (ft *FileTree) SetRoot(fsnode *FSNode) {
 	if fsnode != nil {
 		ft.root = fsnode.Node
 		ft.view.SetRoot(fsnode.Node)
+		if !fsnode.IsExpanded() {
+			fsnode.Expand()
+		}
+
+		if ft.view.GetCurrentNode() == nil {
+			ft.view.SetCurrentNode(fsnode.Node)
+		}
+
+		if ft.onChanged != nil {
+			ft.AfterDraw = append(ft.AfterDraw, func() {
+				ft.onChanged(get(ft.view.GetCurrentNode()))
+			})
+		}
 	}
 }
 
@@ -171,17 +185,11 @@ func (ft *FileTree) SetCurrent(fsnode *FSNode) {
 }
 
 func (ft *FileTree) IsRoot(fsnode *FSNode) bool {
-	if !fsnode.IsExpanded() {
-		fsnode.Expand()
-	}
-
 	return ft.root == fsnode.Node
 }
 
 func (ft *FileTree) Load(dir string) {
-	ft.root = NewRootNode(dir)
-	ft.view.SetRoot(ft.root).
-		SetCurrentNode(ft.root)
+	ft.SetRoot(newRootFsnode(dir))
 
 }
 

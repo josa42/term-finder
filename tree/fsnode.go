@@ -69,15 +69,17 @@ func NewNode(parentPath string, file fs.FileInfo) *tview.TreeNode {
 func (n *FSNode) Expand() {
 	n.ReadChildren()
 	n.Node.Expand()
+	n.Node.SetText(n.Title())
 }
 
 func (n *FSNode) Collapse() {
 	n.Node.ClearChildren()
 	n.Node.Collapse()
+	n.Node.SetText(n.Title())
 }
 
 func (n *FSNode) IsExpanded() bool {
-	return n.Node.IsExpanded()
+	return n.Node != nil && n.Node.IsExpanded()
 }
 
 func (n *FSNode) readChildren(node *FSNode) {
@@ -91,20 +93,16 @@ func (n *FSNode) readChildren(node *FSNode) {
 
 		nodes := []*tview.TreeNode{}
 
-		if node != nil {
-			log.Printf("looking for node %s", node.Path)
-		}
-
 		for _, file := range files {
+			// if strings.HasPrefix(file.Name(), ".") {
+			// 	continue
+			// }
+
 			fpath := filepath.Join(n.Path, file.Name())
 
 			if node != nil && node.Path == fpath {
-				log.Printf("reuse node %s", node.Path)
 				nodes = append(nodes, node.Node)
 			} else {
-				if node != nil {
-					log.Printf("new node %s", fpath)
-				}
 				nodes = append(nodes, NewNode(n.Path, file))
 			}
 		}
@@ -147,11 +145,15 @@ func (n *FSNode) CreateParent() *FSNode {
 }
 
 func (n *FSNode) Title() string {
-	icon := ""
+	icon := "  "
 	if n.IsDir {
-		icon = ""
+		if n.IsExpanded() {
+			icon = " ﱮ"
+		} else {
+			icon = " "
+		}
 	}
-	return fmt.Sprintf("%s %s", icon, n.Name)
+	return fmt.Sprintf("%s %s%s", icon, n.Name, strings.Repeat(" ", 50))
 }
 
 func createNode(n *FSNode) *tview.TreeNode {

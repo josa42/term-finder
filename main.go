@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/josa42/term-finder/tree"
 	"github.com/rivo/tview"
 )
@@ -57,11 +58,6 @@ func main() {
 
 	app.SetRoot(grid, true)
 
-	ft := tree.NewFileTree(theme)
-	ft.Load(pwd)
-
-	treeView := ft.GetView()
-
 	topbar := tview.NewTextView()
 	topbar.SetBorderPadding(0, 0, 1, 1)
 	topbar.SetBorder(true)
@@ -74,14 +70,7 @@ func main() {
 	contentView.SetBorderPadding(0, 0, 2, 2)
 	contentView.SetBackgroundColor(theme.ContentBackground)
 
-	grid.
-		AddItem(treeView, 0, 0, 2, 2, 0, 0, true)
-
-	grid.
-		AddItem(treeView, 0, 0, 2, 1, 0, 50, true).
-		AddItem(topbar, 0, 1, 1, 1, 0, 50, false).
-		AddItem(contentView, 1, 1, 1, 1, 0, 50, false)
-
+	ft := tree.NewFileTree(theme)
 	ft.OnChanged(func(fsnode *tree.FSNode) {
 		log.Printf("on changed: %s", fsnode.Name)
 		if !fsnode.IsDir && fsnode.Size < 400_000 {
@@ -100,6 +89,25 @@ func main() {
 		contentView.ScrollTo(0, 0)
 		go app.Draw()
 	})
+	ft.Load(pwd)
+
+	treeView := ft.GetView()
+
+	app.SetAfterDrawFunc(func(screen tcell.Screen) {
+		var x func()
+		for len(ft.AfterDraw) > 0 {
+			x, ft.AfterDraw = ft.AfterDraw[0], ft.AfterDraw[1:]
+			x()
+		}
+	})
+
+	grid.
+		AddItem(treeView, 0, 0, 2, 2, 0, 0, true)
+
+	grid.
+		AddItem(treeView, 0, 0, 2, 1, 0, 50, true).
+		AddItem(topbar, 0, 1, 1, 1, 0, 50, false).
+		AddItem(contentView, 1, 1, 1, 1, 0, 50, false)
 
 	if err := app.SetRoot(grid, true).Run(); err != nil {
 		panic(err)
