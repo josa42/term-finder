@@ -5,6 +5,8 @@ import (
 	"github.com/rivo/tview"
 )
 
+var _ tview.Primitive = &FileTree{}
+
 type FileTree struct {
 	theme     *Theme
 	view      *tview.TreeView
@@ -54,6 +56,34 @@ func NewFileTree(theme *Theme) *FileTree {
 	})
 
 	return ft
+}
+
+// Primitive interface
+
+func (ft *FileTree) Draw(screen tcell.Screen) {
+	ft.view.Draw(screen)
+}
+func (ft *FileTree) GetRect() (int, int, int, int) {
+	return ft.view.GetRect()
+}
+func (ft *FileTree) SetRect(x, y, width, height int) {
+	ft.view.SetRect(x, y, width, height)
+}
+func (ft *FileTree) InputHandler() func(event *tcell.EventKey, setFocus func(p tview.Primitive)) {
+	return ft.view.InputHandler()
+}
+func (ft *FileTree) Focus(delegate func(p tview.Primitive)) {
+	ft.view.Focus(delegate)
+}
+
+func (ft *FileTree) HasFocus() bool {
+	return ft.view.HasFocus()
+}
+func (ft *FileTree) Blur() {
+	ft.view.Blur()
+}
+func (ft *FileTree) MouseHandler() func(action tview.MouseAction, event *tcell.EventMouse, setFocus func(p tview.Primitive)) (consumed bool, capture tview.Primitive) {
+	return ft.view.MouseHandler()
 }
 
 func (ft *FileTree) inputCapture(event *tcell.EventKey) *tcell.EventKey {
@@ -210,11 +240,6 @@ func (ft *FileTree) OnOpen(fn func(node *FSNode)) {
 
 func (ft *FileTree) OnChanged(fn func(node *FSNode)) {
 	ft.onChanged = fn
-}
-
-// TODO remive these getters
-func (ft *FileTree) GetView() *tview.TreeView {
-	return ft.view
 }
 
 func (ft *FileTree) GetRootNode() *tview.TreeNode {

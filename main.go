@@ -120,8 +120,6 @@ func main() {
 
 	ft.Load(pwd)
 
-	treeView := ft.GetView()
-
 	app.SetAfterDrawFunc(func(screen tcell.Screen) {
 		var x func()
 		for len(ft.AfterDraw) > 0 {
@@ -131,10 +129,10 @@ func main() {
 	})
 
 	grid.
-		AddItem(treeView, 0, 0, 2, 2, 0, 0, true)
+		AddItem(ft, 0, 0, 2, 2, 0, 0, true)
 
 	grid.
-		AddItem(treeView, 0, 0, 2, 1, 0, 50, true).
+		AddItem(ft, 0, 0, 2, 1, 0, 50, true).
 		AddItem(topbar, 0, 1, 1, 1, 0, 50, false).
 		AddItem(contentView, 1, 1, 1, 1, 0, 50, false)
 
