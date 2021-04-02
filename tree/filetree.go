@@ -11,6 +11,7 @@ type FileTree struct {
 	root      *tview.TreeNode
 	onSelect  func(node *FSNode)
 	onChanged func(node *FSNode)
+	onOpen    func(node *FSNode)
 	AfterDraw []func()
 }
 
@@ -98,6 +99,12 @@ func (ft *FileTree) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 			return nil
 		case 'C':
 			ft.SetRoot(ft.GetRoot().CreateParent())
+			return nil
+
+		case 'o':
+			if ft.onOpen != nil {
+				ft.onOpen(fsnode)
+			}
 			return nil
 
 		default:
@@ -195,6 +202,10 @@ func (ft *FileTree) Load(dir string) {
 
 func (ft *FileTree) OnSelect(fn func(node *FSNode)) {
 	ft.onSelect = fn
+}
+
+func (ft *FileTree) OnOpen(fn func(node *FSNode)) {
+	ft.onOpen = fn
 }
 
 func (ft *FileTree) OnChanged(fn func(node *FSNode)) {

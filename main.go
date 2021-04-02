@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -89,6 +90,34 @@ func main() {
 		contentView.ScrollTo(0, 0)
 		go app.Draw()
 	})
+
+	ft.OnSelect(func(node *tree.FSNode) {
+		if !node.IsDir {
+			app.Suspend(func() {
+				editor := os.Getenv("EDITOR")
+				if editor == "" {
+					editor = "vim"
+				}
+				cmd := exec.Command(editor, node.Path)
+				cmd.Stdin = os.Stdin
+				cmd.Stdout = os.Stdout
+				cmd.Run()
+			})
+		}
+	})
+
+	ft.OnOpen(func(node *tree.FSNode) {
+		go func() {
+			exec.Command("open", node.Path).Run()
+			// app.Suspend(func() {
+			// 	cmd := exec.Command("open", node.Path)
+			// 	cmd.Stdin = os.Stdin
+			// 	cmd.Stdout = os.Stdout
+			// 	cmd.Run()
+			// })
+		}()
+	})
+
 	ft.Load(pwd)
 
 	treeView := ft.GetView()
