@@ -128,7 +128,7 @@ func (ft *FileTree) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 			}
 			return nil
 		case 'C':
-			ft.SetRoot(ft.GetRoot().CreateParent())
+			ft.SetRoot(get(ft.root).CreateParent())
 			return nil
 
 		case 'o':
@@ -211,10 +211,6 @@ func (ft *FileTree) SetRoot(fsnode *FSNode) {
 	}
 }
 
-func (ft *FileTree) GetRoot() *FSNode {
-	return get(ft.root)
-}
-
 func (ft *FileTree) SetCurrent(fsnode *FSNode) {
 	if fsnode != nil {
 		ft.view.SetCurrentNode(fsnode.Node)
@@ -240,8 +236,4 @@ func (ft *FileTree) OnOpen(fn func(node *FSNode)) {
 
 func (ft *FileTree) OnChanged(fn func(node *FSNode)) {
 	ft.onChanged = fn
-}
-
-func (ft *FileTree) GetRootNode() *tview.TreeNode {
-	return ft.root
 }
