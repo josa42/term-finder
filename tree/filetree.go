@@ -97,7 +97,7 @@ func (ft *FileTree) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 		if fsnode.IsDir && fsnode.IsExpanded() {
 			fsnode.Collapse()
 
-		} else {
+		} else if !ft.IsRoot(parent) {
 			ft.SetCurrent(parent)
 		}
 
@@ -107,6 +107,7 @@ func (ft *FileTree) inputCapture(event *tcell.EventKey) *tcell.EventKey {
 		if fsnode.IsDir && !fsnode.IsExpanded() {
 			fsnode.Expand()
 		}
+
 		return nil
 
 	case tcell.KeyRune:
