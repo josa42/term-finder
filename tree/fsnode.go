@@ -28,15 +28,8 @@ type FSNode struct {
 }
 
 func newRootFsnode(path string) *FSNode {
-	fsnode := &FSNode{
-		Name:  filepath.Base(path),
-		Path:  path,
-		IsDir: true,
-	}
-
-	fsnode.Node = createNode(fsnode)
-
-	return fsnode
+	stat, _ := os.Stat(path)
+	return newFsnode(filepath.Dir(path), stat)
 }
 
 func NewRootNode(path string) *tview.TreeNode {
@@ -67,10 +60,20 @@ func newFsnode(parentPath string, stat fs.FileInfo) *FSNode {
 		Name:     name,
 		Path:     fpath,
 		IsDir:    stat.IsDir(),
-		Size:     stat.Size(),
+		Size:     -1,
 		Mode:     stat.Mode(),
 		ModTime:  stat.ModTime(),
 		MimeType: mime,
+	}
+
+	if !stat.IsDir() {
+		fsnode.Size = stat.Size()
+	} else {
+		go func() {
+			size, _ := dirSize(fpath)
+			fsnode.Size = size
+			log.Printf("dir size: %v | %s", size, fpath)
+		}()
 	}
 
 	fsnode.Node = createNode(fsnode)
@@ -197,9 +200,19 @@ func getFileContentType(file *os.File) (string, error) {
 		return "", err
 	}
 
-	// Use the net/http package's handy DectectContentType function. Always returns a valid
-	// content-type by returning "application/octet-stream" if no others seemed to match.
-	contentType := http.DetectContentType(buffer)
+	return http.DetectContentType(buffer), nil
+}
 
-	return contentType, nil
+func dirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return err
+	})
+	return size, err
 }

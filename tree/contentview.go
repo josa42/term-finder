@@ -15,7 +15,7 @@ var _ tview.Primitive = &ContentView{}
 
 type ContentView struct {
 	theme       *Theme
-	view        tview.Primitive
+	view        *tview.Grid
 	topbarView  *tview.TextView
 	infoView    *tview.TextView
 	contentView *tview.TextView
@@ -110,12 +110,20 @@ func (v *ContentView) SetPreview(fsnode *FSNode) {
 		v.contentView.SetText("")
 	}
 
-	v.infoView.SetText(strings.Join([]string{
-		fmt.Sprintf(" [#5c6370]│      Mode:[normal] %v", fsnode.Mode),
-		fmt.Sprintf(" [#5c6370]│  Modified:[normal] %v", fsnode.ModTime),
-		fmt.Sprintf(" [#5c6370]│      Size:[normal] %v", formatSize(fsnode.Size)),
-		fmt.Sprintf(" [#5c6370]│ Mime Type:[normal] %v", fsnode.MimeType),
-	}, "\n"))
+	i := []string{}
+
+	i = append(i, fmt.Sprintf(" [#5c6370]│      Mode:[normal] %v", fsnode.Mode))
+	i = append(i, fmt.Sprintf(" [#5c6370]│  Modified:[normal] %v", fsnode.ModTime))
+	if fsnode.Size != -1 {
+		i = append(i, fmt.Sprintf(" [#5c6370]│      Size:[normal] %v", formatSize(fsnode.Size)))
+	}
+
+	if !fsnode.IsDir {
+		i = append(i, fmt.Sprintf(" [#5c6370]│ Mime Type:[normal] %v", fsnode.MimeType))
+	}
+
+	v.view.SetRows(3, len(i)+1, 0)
+	v.infoView.SetText(strings.Join(i, "\n"))
 }
 
 func formatPath(p string) string {
