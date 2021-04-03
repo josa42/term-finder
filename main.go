@@ -1,13 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strings"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/josa42/term-finder/tree"
@@ -20,23 +16,6 @@ func setupLogging() func() error {
 	log.SetOutput(f)
 
 	return f.Close
-}
-
-func formatPath(p string) string {
-	dir := filepath.Dir(p)
-	base := filepath.Base(p)
-
-	home := os.Getenv("HOME")
-
-	if strings.HasPrefix(dir, home) {
-		dir = strings.Replace(dir, home, "~", 1)
-	}
-
-	if dir == "/" {
-		return fmt.Sprintf("[blue]/[normal]%s", base)
-	}
-
-	return fmt.Sprintf("[blue]%s/[normal]%s", dir, base)
 }
 
 // Show a navigable tree view of the current directory.
@@ -54,44 +33,20 @@ func main() {
 	grid := tview.NewGrid().
 		SetBordersColor(theme.Border).
 		SetBorders(theme.Border != 0).
-		SetRows(3, 0).
 		SetColumns(50, 0)
 
 	app.SetRoot(grid, true)
 
-	topbar := tview.NewTextView()
-	topbar.SetBorderPadding(0, 0, 1, 1)
-	topbar.SetBorder(true)
-	topbar.SetBorderColor(theme.TopbarBorder)
-	topbar.SetDynamicColors(true)
-	topbar.SetRegions(true)
-	topbar.SetText(formatPath(pwd))
+	treeView := tree.NewFileTree(theme)
+	contentView := tree.NewContentView(theme)
 
-	contentView := tview.NewTextView()
-	contentView.SetBorderPadding(0, 0, 2, 2)
-	contentView.SetBackgroundColor(theme.ContentBackground)
-
-	ft := tree.NewFileTree(theme)
-	ft.OnChanged(func(fsnode *tree.FSNode) {
+	treeView.OnChanged(func(fsnode *tree.FSNode) {
 		log.Printf("on changed: %s", fsnode.Name)
-		if !fsnode.IsDir && fsnode.Size < 400_000 {
-			contentView.SetText(fsnode.Path)
-			contentView.SetTitle(fsnode.Path)
-			content, _ := ioutil.ReadFile(fsnode.Path)
-			contentView.SetText(string(content))
-
-			topbar.SetText(formatPath(fsnode.Path))
-
-		} else {
-			contentView.SetText("")
-		}
-
-		topbar.SetText(formatPath(fsnode.Path))
-		contentView.ScrollTo(0, 0)
+		contentView.SetPreview(fsnode)
 		go app.Draw()
 	})
 
-	ft.OnSelect(func(node *tree.FSNode) {
+	treeView.OnSelect(func(node *tree.FSNode) {
 		if !node.IsDir {
 			app.Suspend(func() {
 				editor := os.Getenv("EDITOR")
@@ -106,35 +61,28 @@ func main() {
 		}
 	})
 
-	ft.OnOpen(func(node *tree.FSNode) {
+	treeView.OnOpen(func(node *tree.FSNode) {
 		go func() {
 			exec.Command("open", node.Path).Run()
-			// app.Suspend(func() {
-			// 	cmd := exec.Command("open", node.Path)
-			// 	cmd.Stdin = os.Stdin
-			// 	cmd.Stdout = os.Stdout
-			// 	cmd.Run()
-			// })
 		}()
 	})
 
-	ft.Load(pwd)
+	treeView.Load(pwd)
 
 	app.SetAfterDrawFunc(func(screen tcell.Screen) {
 		var x func()
-		for len(ft.AfterDraw) > 0 {
-			x, ft.AfterDraw = ft.AfterDraw[0], ft.AfterDraw[1:]
+		for len(treeView.AfterDraw) > 0 {
+			x, treeView.AfterDraw = treeView.AfterDraw[0], treeView.AfterDraw[1:]
 			x()
 		}
 	})
 
 	grid.
-		AddItem(ft, 0, 0, 2, 2, 0, 0, true)
+		AddItem(treeView, 0, 0, 1, 2, 0, 0, true)
 
 	grid.
-		AddItem(ft, 0, 0, 2, 1, 0, 50, true).
-		AddItem(topbar, 0, 1, 1, 1, 0, 50, false).
-		AddItem(contentView, 1, 1, 1, 1, 0, 50, false)
+		AddItem(treeView, 0, 0, 1, 1, 0, 50, true).
+		AddItem(contentView, 0, 1, 1, 1, 0, 50, false)
 
 	if err := app.SetRoot(grid, true).Run(); err != nil {
 		panic(err)

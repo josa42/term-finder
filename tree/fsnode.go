@@ -5,20 +5,26 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"log"
+	"net/http"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
 type FSNode struct {
-	Name  string
-	Path  string
-	IsDir bool
-	Size  int64
-	Node  *tview.TreeNode
+	Name     string
+	Path     string
+	IsDir    bool
+	Size     int64
+	Node     *tview.TreeNode
+	Mode     fs.FileMode
+	ModTime  time.Time
+	MimeType string
 }
 
 func newRootFsnode(path string) *FSNode {
@@ -44,16 +50,27 @@ func NewRootNode(path string) *tview.TreeNode {
 	return fsnode.Node
 }
 
-func newFsnode(parentPath string, file fs.FileInfo) *FSNode {
+func newFsnode(parentPath string, stat fs.FileInfo) *FSNode {
 
-	name := file.Name()
+	name := stat.Name()
 	fpath := filepath.Join(parentPath, name)
 
+	file, _ := os.Open(fpath)
+
+	mime := ""
+	if !stat.IsDir() {
+		mime, _ = getFileContentType(file)
+		defer file.Close()
+	}
+
 	fsnode := &FSNode{
-		Name:  name,
-		Path:  fpath,
-		IsDir: file.IsDir(),
-		Size:  file.Size(),
+		Name:     name,
+		Path:     fpath,
+		IsDir:    stat.IsDir(),
+		Size:     stat.Size(),
+		Mode:     stat.Mode(),
+		ModTime:  stat.ModTime(),
+		MimeType: mime,
 	}
 
 	fsnode.Node = createNode(fsnode)
@@ -168,4 +185,21 @@ func createNode(n *FSNode) *tview.TreeNode {
 	node.SetExpanded(false)
 
 	return node
+}
+
+func getFileContentType(file *os.File) (string, error) {
+
+	// Only the first 512 bytes are used to sniff the content type.
+	buffer := make([]byte, 512)
+
+	_, err := file.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+
+	// Use the net/http package's handy DectectContentType function. Always returns a valid
+	// content-type by returning "application/octet-stream" if no others seemed to match.
+	contentType := http.DetectContentType(buffer)
+
+	return contentType, nil
 }
